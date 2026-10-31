@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Gatherly · Find your event photos{% endblock %}
+{% block content %}
+<section class="hero">
+  <div>
+    <p class="eyebrow">Local-first event sharing</p>
+    <h1>Every memory finds the right person.</h1>
+    <p class="lead">Create a private event, collect everyone's photos, and help each guest find the moments they appear in—without uploading faces to a paid cloud service.</p>
+    <div class="actions"><a class="button" href="/register">Create an event</a><a class="button secondary" href="/login">I have an invite</a></div>
+  </div>
+  <div class="hero-art" aria-label="Abstract event photo gallery">
+    <div class="photo-card one"><span>01</span></div><div class="photo-card two"><span>02</span></div><div class="photo-card three"><span>03</span></div>
+  </div>
+</section>
+<section class="feature-grid">
+  <article><b>01</b><h3>Create a private event</h3><p>Invite only the people you trust with a short event code.</p></article>
+  <article><b>02</b><h3>Enroll by choice</h3><p>Each guest controls their own event-specific face profile and can delete it.</p></article>
+  <article><b>03</b><h3>Share once</h3><p>Upload original photos once. Matching happens privately on your machine.</p></article>
+</section>
+{% endblock %}
+

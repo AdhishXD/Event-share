@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Create account' if mode == 'register' else 'Sign in' }} · Gatherly{% endblock %}
+{% block content %}
+<section class="auth-shell">
+  <div class="auth-copy"><p class="eyebrow">Your photos, your choice</p><h1>{{ 'Start gathering memories.' if mode == 'register' else 'Welcome back.' }}</h1><p>Everything stays on this computer while you test the local version.</p></div>
+  <form class="panel form" method="post" action="/{{ mode }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {% if mode == 'register' %}<label>Your name<input name="name" required minlength="2" autocomplete="name"></label>{% endif %}
+    <label>Email address<input type="email" name="email" required autocomplete="email"></label>
+    <label>Password<input type="password" name="password" required minlength="8" autocomplete="{{ 'new-password' if mode == 'register' else 'current-password' }}"></label>
+    <button class="button full">{{ 'Create account' if mode == 'register' else 'Sign in' }}</button>
+    <p class="muted">{{ 'Already registered?' if mode == 'register' else 'New here?' }} <a href="/{{ 'login' if mode == 'register' else 'register' }}">{{ 'Sign in' if mode == 'register' else 'Create an account' }}</a></p>
+  </form>
+</section>
+{% endblock %}
+

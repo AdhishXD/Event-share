@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>{% block title %}Gatherly{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="{{ '/dashboard' if user else '/' }}"><span>G</span> Gatherly</a>
+    <nav>
+      {% if user %}
+        <a href="/dashboard">Events</a><a href="/gallery">My photos</a>
+        <form action="/logout" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="link-button">Sign out</button></form>
+      {% else %}
+        <a href="/login">Sign in</a><a class="button small" href="/register">Get started</a>
+      {% endif %}
+    </nav>
+  </header>
+  {% if flash %}<div class="flash {{ flash.kind }}">{{ flash.message }}</div>{% endif %}
+  <main>{% block content %}{% endblock %}</main>
+  <footer>Private by design · Recognition stays on this computer</footer>
+</body>
+</html>
+

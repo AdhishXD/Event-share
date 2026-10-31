@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}My photos · Gatherly{% endblock %}
+{% block content %}
+<section class="page-heading"><div><p class="eyebrow">Personal gallery</p><h1>Photos that found you</h1><p>Only you can review your uncertain matches.</p></div></section>
+{% if pending %}<section class="review"><div class="section-title"><div><p class="eyebrow">Needs your review</p><h2>Is this you?</h2></div><span class="status">{{ pending|length }} pending</span></div><div class="photo-grid">{% for photo in pending %}<article class="photo"><img src="/media/{{ photo.id }}" alt="Possible match"><div><p>{{ photo.event_name }}</p><small>{{ (photo.confidence * 100)|round|int }}% similarity</small><form class="inline" method="post" action="/matches/{{ photo.match_id }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="button tiny" name="decision" value="accepted">That's me</button><button class="danger tiny" name="decision" value="rejected">Not me</button></form></div></article>{% endfor %}</div></section>{% endif %}
+<section class="photo-section"><div class="section-title"><div><p class="eyebrow">Confirmed</p><h2>Your event memories</h2></div><span class="status ready">{{ accepted|length }} photos</span></div><div class="photo-grid">{% for photo in accepted %}<article class="photo"><a href="/media/{{ photo.id }}" target="_blank"><img src="/media/{{ photo.id }}" alt="Matched event photo" loading="lazy"></a><div><p>{{ photo.event_name }}</p><small>Private match · {{ (photo.confidence * 100)|round|int }}%</small></div></article>{% else %}<div class="empty"><h3>No confirmed matches yet</h3><p>Enroll in an event and ask guests to upload their photos.</p></div>{% endfor %}</div></section>
+{% endblock %}
+
