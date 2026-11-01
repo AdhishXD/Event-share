@@ -13,6 +13,8 @@ if [ ! -f models/face_detection_yunet_2023mar.onnx ] || [ ! -f models/face_recog
   exit 1
 fi
 
-echo "Gatherly is starting at http://127.0.0.1:8000"
-exec .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+gatherly_host="${GATHERLY_HOST:-127.0.0.1}"
+
+echo "Gatherly is starting on ${gatherly_host}:8000"
+exec .venv/bin/uvicorn app.main:app --host "$gatherly_host" --port 8000
 

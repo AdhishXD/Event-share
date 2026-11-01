@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <title>{% block title %}Gatherly{% endblock %}</title>
-  <link rel="stylesheet" href="/static/style.css?v=apple-redesign-3">
+  <link rel="stylesheet" href="/static/style.css?v=apple-redesign-4">
 </head>
 <body class="{% block body_class %}{% endblock %}">
   {% from "_icons.html" import icon %}
@@ -25,7 +25,7 @@
   <main>{% block content %}{% endblock %}</main>
   {% if user %}<nav class="mobile-tabbar glass-bar" aria-label="Mobile navigation"><a class="{{ 'active' if request.url.path == '/dashboard' else '' }}" href="/dashboard">{{ icon('events', 23) }}<span>Events</span></a><a class="{{ 'active' if request.url.path == '/gallery' else '' }}" href="/gallery">{{ icon('photos', 23) }}<span>Photos</span></a><a href="/dashboard">{{ icon('person', 23) }}<span>Account</span></a></nav>{% endif %}
   <footer><span>{{ icon('lock', 14) }}</span> Face matching stays on this computer</footer>
-  <script src="/static/app.js?v=apple-redesign-3" defer></script>
+  <script src="/static/app.js?v=apple-redesign-4" defer></script>
 </body>
 </html>
 

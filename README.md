@@ -24,6 +24,26 @@ UV_CACHE_DIR=.uv-cache uv sync
 
 Open <http://127.0.0.1:8000>.
 
+### Test from a phone
+
+Connect the Mac and phone to the same Wi-Fi network, then start Gatherly on the
+local network:
+
+```bash
+GATHERLY_HOST=0.0.0.0 ./scripts/run_local.sh
+```
+
+Find the Mac's Wi-Fi address with `ipconfig getifaddr en0`, then open
+`http://<mac-ip>:8000` on the phone. Keep the terminal running while testing.
+macOS may ask whether to allow incoming connections; allow them for this local
+test. Stop the server when finished so it is no longer reachable on the local
+network.
+
+Laptop camera capture works from `http://127.0.0.1:8000` or `localhost`, where
+browsers permit camera access. On phones opened through the Wi-Fi address,
+Gatherly falls back to the system camera picker because browsers restrict live
+camera APIs on non-HTTPS network addresses.
+
 For this checked-out workspace, setup and model download have already been
 completed. You only need `./scripts/run_local.sh` after a restart.
 

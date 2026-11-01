@@ -113,6 +113,9 @@ def test_account_event_and_invite_flow():
         assert "Add Event Photos" in manage.text
         assert 'data-reference-camera' in manage.text
         assert 'capture="user"' in manage.text
+        assert 'data-open-camera' in manage.text
+        assert 'data-camera-dialog' in manage.text
+        assert 'data-capture-photo' in manage.text
         assert 'name="photos"' in manage.text
         assert 'name="photos" accept="image/jpeg,image/png,image/webp" multiple required capture' not in manage.text
         assert "Event Appearance" not in manage.text
