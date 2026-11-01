@@ -111,6 +111,10 @@ def test_account_event_and_invite_flow():
         assert "Event Guest" in manage.text
         assert "Help Photos Find You" in manage.text
         assert "Add Event Photos" in manage.text
+        assert 'data-reference-camera' in manage.text
+        assert 'capture="user"' in manage.text
+        assert 'name="photos"' in manage.text
+        assert 'name="photos" accept="image/jpeg,image/png,image/webp" multiple required capture' not in manage.text
         assert "Event Appearance" not in manage.text
         forbidden = guest.post(
             f"/events/{event_id}/appearance",
