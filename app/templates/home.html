@@ -1,21 +1,30 @@
 {% extends "base.html" %}
 {% block title %}Gatherly · Find your event photos{% endblock %}
+{% block body_class %}landing{% endblock %}
 {% block content %}
 <section class="hero">
-  <div>
-    <p class="eyebrow">Local-first event sharing</p>
-    <h1>Every memory finds the right person.</h1>
-    <p class="lead">Create a private event, collect everyone's photos, and help each guest find the moments they appear in—without uploading faces to a paid cloud service.</p>
-    <div class="actions"><a class="button" href="/register">Create an event</a><a class="button secondary" href="/login">I have an invite</a></div>
+  <div class="hero-copy materialize">
+    <div class="privacy-pill">{{ icon('lock', 15) }} Private by design</div>
+    <h1>Every photo.<br><span>Right where it belongs.</span></h1>
+    <p class="lead">Gather everyone’s event photos in one private place. Local face matching quietly finds the moments that include you.</p>
+    <div class="actions"><a class="button large" href="/register">Create an Event</a><a class="button secondary large" href="/login">Join an Event</a></div>
+    <p class="hero-note">Free to run · No cloud face API · You control your profile</p>
   </div>
-  <div class="hero-art" aria-label="Abstract event photo gallery">
-    <div class="photo-card one"><span>01</span></div><div class="photo-card two"><span>02</span></div><div class="photo-card three"><span>03</span></div>
+  <div class="photo-constellation materialize delay" aria-label="Several event photos resolving into one personal gallery">
+    <div class="constellation-glow"></div>
+    <div class="memory-card memory-a"><div class="portrait portrait-a"></div><span>Reception</span></div>
+    <div class="memory-card memory-b"><div class="portrait portrait-b"></div><span>Friends</span></div>
+    <div class="memory-card memory-focus"><div class="focus-ring"><span>{{ icon('sparkle', 20) }}</span></div><div class="portrait portrait-focus"></div><div class="match-label">{{ icon('check', 15) }} Found you</div></div>
   </div>
 </section>
-<section class="feature-grid">
-  <article><b>01</b><h3>Create a private event</h3><p>Invite only the people you trust with a short event code.</p></article>
-  <article><b>02</b><h3>Enroll by choice</h3><p>Each guest controls their own event-specific face profile and can delete it.</p></article>
-  <article><b>03</b><h3>Share once</h3><p>Upload original photos once. Matching happens privately on your machine.</p></article>
+<section class="feature-section">
+  <div class="section-intro"><p class="overline">How it works</p><h2>Share once. Find everyone.</h2></div>
+  <div class="feature-grid">
+    <article><span class="feature-icon">{{ icon('events', 25) }}</span><h3>Create a private event</h3><p>Invite people you trust with a short, private event code.</p></article>
+    <article><span class="feature-icon">{{ icon('person', 25) }}</span><h3>Enroll only if you choose</h3><p>Your face profile belongs to one event and can be deleted any time.</p></article>
+    <article><span class="feature-icon">{{ icon('sparkle', 25) }}</span><h3>Let photos find people</h3><p>Matching runs locally, then builds a personal gallery for every guest.</p></article>
+  </div>
 </section>
+<section class="privacy-banner"><div class="privacy-orb">{{ icon('lock', 30) }}</div><div><p class="overline">Privacy is the feature</p><h2>Your face never needs a paid cloud.</h2><p>Reference photos, embeddings, and event media remain on the computer running Gatherly. Enrollment is optional and reversible.</p></div></section>
 {% endblock %}
 

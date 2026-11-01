@@ -12,6 +12,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from .config import (
     ALLOWED_IMAGE_TYPES,
     AUTO_MATCH_THRESHOLD,
+    EVENT_COVER_DIR,
     MAX_IMAGE_BYTES,
     REFERENCE_DIR,
     REVIEW_MATCH_THRESHOLD,
@@ -104,6 +105,13 @@ def require_member(connection, event_id: int, user_id: int):
     ).fetchone()
     if not member:
         raise HTTPException(status_code=403, detail="You are not a member of this event.")
+    return member
+
+
+def require_organizer(connection, event_id: int, user_id: int):
+    member = require_member(connection, event_id, user_id)
+    if member["role"] != "organizer":
+        raise HTTPException(status_code=403, detail="Only the event organizer can change its appearance.")
     return member
 
 
@@ -309,6 +317,21 @@ def event_page(request: Request, event_id: int):
     with db() as connection:
         member = require_member(connection, event_id, user_id)
         event = connection.execute("SELECT * FROM events WHERE id=?", (event_id,)).fetchone()
+        photos = connection.execute(
+            "SELECT media.*, users.name AS uploader_name FROM media JOIN users ON users.id=media.uploader_id WHERE event_id=? ORDER BY created_at DESC",
+            (event_id,),
+        ).fetchall()
+    return template(
+        request, "event.html", event=event, member=member, photos=photos
+    )
+
+
+@app.get("/events/{event_id}/manage", response_class=HTMLResponse)
+def manage_event_page(request: Request, event_id: int):
+    user_id = require_user(request)
+    with db() as connection:
+        member = require_member(connection, event_id, user_id)
+        event = connection.execute("SELECT * FROM events WHERE id=?", (event_id,)).fetchone()
         profile = connection.execute(
             "SELECT * FROM face_profiles WHERE event_id=? AND user_id=?", (event_id, user_id)
         ).fetchone()
@@ -319,13 +342,70 @@ def event_page(request: Request, event_id: int):
                WHERE m.event_id=? ORDER BY m.role, u.name""",
             (event_id,),
         ).fetchall()
-        photos = connection.execute(
-            "SELECT media.*, users.name AS uploader_name FROM media JOIN users ON users.id=media.uploader_id WHERE event_id=? ORDER BY created_at DESC",
-            (event_id,),
-        ).fetchall()
+        photo_count = connection.execute(
+            "SELECT COUNT(*) FROM media WHERE event_id=?", (event_id,)
+        ).fetchone()[0]
     return template(
-        request, "event.html", event=event, member=member, profile=profile, members=members, photos=photos
+        request,
+        "event_manage.html",
+        event=event,
+        member=member,
+        profile=profile,
+        members=members,
+        photo_count=photo_count,
     )
+
+
+@app.post("/events/{event_id}/appearance")
+async def update_event_appearance(
+    request: Request,
+    event_id: int,
+    theme: str = Form(...),
+    csrf_token: str = Form(...),
+    cover: UploadFile | None = File(None),
+):
+    verify_csrf(request, csrf_token)
+    user_id = require_user(request)
+    allowed_themes = {"system", "ocean", "sunset", "garden", "celebration"}
+    if theme not in allowed_themes:
+        raise HTTPException(400, "Unknown event theme.")
+    with db() as connection:
+        require_organizer(connection, event_id, user_id)
+        event = connection.execute("SELECT * FROM events WHERE id=?", (event_id,)).fetchone()
+    new_cover = None
+    if cover and cover.filename:
+        new_cover = EVENT_COVER_DIR / str(event_id) / f"cover-{secrets.token_hex(10)}{safe_suffix(cover.filename)}"
+        try:
+            await save_upload(cover, new_cover)
+            recognition.decode_image(new_cover)
+        except ValueError as exc:
+            new_cover.unlink(missing_ok=True)
+            flash(request, str(exc), "error")
+            return RedirectResponse(f"/events/{event_id}/manage", status_code=303)
+    with db() as connection:
+        connection.execute(
+            "UPDATE events SET theme=?, cover_path=COALESCE(?, cover_path) WHERE id=?",
+            (theme, str(new_cover) if new_cover else None, event_id),
+        )
+        connection.execute(
+            "INSERT INTO audit_events(user_id,event_id,action,details,created_at) VALUES(?,?, 'appearance_updated', ?, ?)",
+            (user_id, event_id, theme, now_iso()),
+        )
+    if new_cover and event["cover_path"]:
+        Path(event["cover_path"]).unlink(missing_ok=True)
+    flash(request, "Event appearance updated.", "success")
+    return RedirectResponse(f"/events/{event_id}/manage", status_code=303)
+
+
+@app.get("/events/{event_id}/cover")
+def event_cover(request: Request, event_id: int):
+    user_id = require_user(request)
+    with db() as connection:
+        require_member(connection, event_id, user_id)
+        event = connection.execute("SELECT cover_path FROM events WHERE id=?", (event_id,)).fetchone()
+    if not event or not event["cover_path"] or not Path(event["cover_path"]).exists():
+        raise HTTPException(404, "Event cover not found.")
+    return FileResponse(event["cover_path"])
 
 
 @app.post("/events/{event_id}/enroll")
@@ -342,7 +422,7 @@ async def enroll_face(
         raise HTTPException(400, "Explicit consent is required.")
     if not 2 <= len(references) <= 5:
         flash(request, "Upload between 2 and 5 clear reference photos.", "error")
-        return RedirectResponse(f"/events/{event_id}", status_code=303)
+        return RedirectResponse(f"/events/{event_id}/manage", status_code=303)
     with db() as connection:
         require_member(connection, event_id, user_id)
     saved: list[Path] = []
@@ -360,7 +440,7 @@ async def enroll_face(
         for path in saved:
             path.unlink(missing_ok=True)
         flash(request, str(exc), "error")
-        return RedirectResponse(f"/events/{event_id}", status_code=303)
+        return RedirectResponse(f"/events/{event_id}/manage", status_code=303)
     averaged = recognition.average(features)
     with db() as connection:
         old_refs = connection.execute(
@@ -392,7 +472,7 @@ async def enroll_face(
     if existing_matches:
         message += f" We also found {existing_matches} possible match(es) in existing photos."
     flash(request, message, "success")
-    return RedirectResponse(f"/events/{event_id}", status_code=303)
+    return RedirectResponse(f"/events/{event_id}/manage", status_code=303)
 
 
 @app.post("/events/{event_id}/enrollment/delete")
@@ -411,7 +491,7 @@ def delete_enrollment(request: Request, event_id: int, csrf_token: str = Form(..
     for row in refs:
         Path(row["stored_path"]).unlink(missing_ok=True)
     flash(request, "Your face profile and matches for this event were deleted.", "success")
-    return RedirectResponse(f"/events/{event_id}", status_code=303)
+    return RedirectResponse(f"/events/{event_id}/manage", status_code=303)
 
 
 @app.post("/events/{event_id}/photos")
@@ -430,7 +510,7 @@ async def upload_photos(
         ).fetchall()
     if not 1 <= len(photos) <= 20:
         flash(request, "Upload between 1 and 20 photos at a time.", "error")
-        return RedirectResponse(f"/events/{event_id}", status_code=303)
+        return RedirectResponse(f"/events/{event_id}/manage", status_code=303)
     completed = 0
     try:
         for upload in photos:
@@ -464,9 +544,9 @@ async def upload_photos(
         if "path" in locals() and path.exists() and completed < len(photos):
             path.unlink(missing_ok=True)
         flash(request, f"Processed {completed} photo(s). Stopped because: {exc}", "error")
-        return RedirectResponse(f"/events/{event_id}", status_code=303)
+        return RedirectResponse(f"/events/{event_id}/manage", status_code=303)
     flash(request, f"Processed {completed} photo(s) privately on this computer.", "success")
-    return RedirectResponse(f"/events/{event_id}", status_code=303)
+    return RedirectResponse(f"/events/{event_id}/manage", status_code=303)
 
 
 @app.get("/gallery", response_class=HTMLResponse)

@@ -5,6 +5,7 @@ ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.getenv("GATHERLY_DATA_DIR", ROOT / "data"))
 UPLOAD_DIR = DATA_DIR / "uploads"
 REFERENCE_DIR = DATA_DIR / "references"
+EVENT_COVER_DIR = DATA_DIR / "event_covers"
 DATABASE_PATH = DATA_DIR / "gatherly.sqlite3"
 MODEL_DIR = Path(os.getenv("GATHERLY_MODEL_DIR", ROOT / "models"))
 DETECTOR_MODEL = MODEL_DIR / "face_detection_yunet_2023mar.onnx"
@@ -16,6 +17,6 @@ REVIEW_MATCH_THRESHOLD = float(os.getenv("GATHERLY_REVIEW_THRESHOLD", "0.36"))
 
 
 def ensure_directories() -> None:
-    for directory in (DATA_DIR, UPLOAD_DIR, REFERENCE_DIR, MODEL_DIR):
+    for directory in (DATA_DIR, UPLOAD_DIR, REFERENCE_DIR, EVENT_COVER_DIR, MODEL_DIR):
         directory.mkdir(parents=True, exist_ok=True)
 

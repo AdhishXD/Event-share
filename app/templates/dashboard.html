@@ -1,19 +1,19 @@
 {% extends "base.html" %}
 {% block title %}Your events · Gatherly{% endblock %}
 {% block content %}
-<section class="page-heading"><div><p class="eyebrow">Hello, {{ user.name }}</p><h1>Your events</h1><p>Create a gathering or join one with an invite code.</p></div></section>
+<section class="page-heading materialize"><div><p class="overline">Welcome back, {{ user.name }}</p><h1>Your Events</h1><p>Create a gathering or join one with an invite code.</p></div><span class="heading-symbol">{{ icon('events', 30) }}</span></section>
 <section class="two-column">
   <div>
-    <h2>Gatherings</h2>
+    <div class="section-title"><h2>Gatherings</h2><span class="count-label">{{ events|length }} total</span></div>
     <div class="event-grid">
     {% for event in events %}
-      <a class="event-card" href="/events/{{ event.id }}"><div class="event-date">{{ event.event_date or 'Date open' }}</div><h3>{{ event.name }}</h3><p>{{ event.description or 'A private gathering' }}</p><div class="meta"><span>{{ event.member_count }} people</span><span>{{ event.photo_count }} photos</span></div></a>
-    {% else %}<div class="empty"><h3>No events yet</h3><p>Create one or enter an invite code to begin.</p></div>{% endfor %}
+      <a class="event-card event-theme-{{ event.theme or 'system' }}" href="/events/{{ event.id }}"><div class="event-cover">{% if event.cover_path %}<img src="/events/{{ event.id }}/cover" alt="{{ event.name }} cover">{% else %}<span class="event-monogram">{{ event.name[0]|upper }}</span>{% endif %}<span class="event-role">{{ event.role }}</span></div><div class="event-content"><div class="event-date">{{ event.event_date or 'Date open' }}</div><h3>{{ event.name }}</h3><p>{{ event.description or 'A private gathering' }}</p><div class="meta"><span>{{ icon('people', 16) }} {{ event.member_count }}</span><span>{{ icon('photos', 16) }} {{ event.photo_count }}</span><span class="card-arrow">{{ icon('arrow', 18) }}</span></div></div></a>
+    {% else %}<div class="empty"><span class="empty-icon">{{ icon('events', 28) }}</span><h3>No Events Yet</h3><p>Create your first gathering or enter an invite code to begin.</p></div>{% endfor %}
     </div>
   </div>
   <aside class="stack">
-    <form class="panel form" action="/events" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><h2>Create an event</h2><label>Name<input name="name" required minlength="3" placeholder="Ananya's wedding"></label><label>Date<input type="date" name="event_date"></label><label>Description<textarea name="description" rows="3" placeholder="A short note for your guests"></textarea></label><button class="button full">Create private event</button></form>
-    <form class="panel form" action="/events/join" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><h2>Join an event</h2><label>Invite code<input name="invite_code" required placeholder="AB12CD34" autocapitalize="characters"></label><button class="button secondary full">Join gathering</button></form>
+    <form class="panel form action-panel" action="/events" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><div class="panel-title"><span class="panel-icon primary">{{ icon('plus', 22) }}</span><div><h2>Create an Event</h2><p>Start a new private gathering.</p></div></div><label><span>Name</span><input name="name" required minlength="3" placeholder="Ananya's wedding"></label><label><span>Date</span><input type="date" name="event_date"></label><label><span>Description</span><textarea name="description" rows="3" placeholder="A short note for your guests"></textarea></label><button class="button full">Create Private Event</button></form>
+    <form class="panel form action-panel compact-panel" action="/events/join" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><div class="panel-title"><span class="panel-icon">{{ icon('people', 22) }}</span><div><h2>Join an Event</h2><p>Enter the code from your host.</p></div></div><label><span>Invite code</span><input class="code-input" name="invite_code" required placeholder="AB12CD34" autocapitalize="characters"></label><button class="button secondary full">Join Gathering</button></form>
   </aside>
 </section>
 {% endblock %}

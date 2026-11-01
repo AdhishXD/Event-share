@@ -1,15 +1,18 @@
 {% extends "base.html" %}
 {% block title %}{{ 'Create account' if mode == 'register' else 'Sign in' }} · Gatherly{% endblock %}
+{% block body_class %}auth-page{% endblock %}
 {% block content %}
 <section class="auth-shell">
-  <div class="auth-copy"><p class="eyebrow">Your photos, your choice</p><h1>{{ 'Start gathering memories.' if mode == 'register' else 'Welcome back.' }}</h1><p>Everything stays on this computer while you test the local version.</p></div>
-  <form class="panel form" method="post" action="/{{ mode }}">
+  <div class="auth-visual materialize"><div class="auth-orbit"><span class="orbit-photo one"></span><span class="orbit-photo two"></span><span class="orbit-photo three"></span><div class="orbit-center">{{ icon('person', 34) }}</div></div><p class="overline">Local face matching</p><h1>{{ 'Your memories, gathered.' if mode == 'register' else 'Good to see you.' }}</h1><p>Everything stays on this computer while you try Gatherly.</p></div>
+  <form class="panel form auth-form materialize delay" method="post" action="/{{ mode }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    {% if mode == 'register' %}<label>Your name<input name="name" required minlength="2" autocomplete="name"></label>{% endif %}
-    <label>Email address<input type="email" name="email" required autocomplete="email"></label>
-    <label>Password<input type="password" name="password" required minlength="8" autocomplete="{{ 'new-password' if mode == 'register' else 'current-password' }}"></label>
-    <button class="button full">{{ 'Create account' if mode == 'register' else 'Sign in' }}</button>
-    <p class="muted">{{ 'Already registered?' if mode == 'register' else 'New here?' }} <a href="/{{ 'login' if mode == 'register' else 'register' }}">{{ 'Sign in' if mode == 'register' else 'Create an account' }}</a></p>
+    <div class="form-heading"><h2>{{ 'Create Your Account' if mode == 'register' else 'Sign In' }}</h2><p>{{ 'Set up your private event space.' if mode == 'register' else 'Continue to your events and photos.' }}</p></div>
+    {% if mode == 'register' %}<label><span>Your name</span><input name="name" required minlength="2" autocomplete="name" placeholder="Full name"></label>{% endif %}
+    <label><span>Email address</span><input type="email" name="email" required autocomplete="email" placeholder="you@example.com"></label>
+    <label><span>Password</span><input type="password" name="password" required minlength="8" autocomplete="{{ 'new-password' if mode == 'register' else 'current-password' }}" placeholder="At least 8 characters"></label>
+    <button class="button full large">{{ 'Create Account' if mode == 'register' else 'Sign In' }}</button>
+    <p class="form-switch">{{ 'Already have an account?' if mode == 'register' else 'New to Gatherly?' }} <a href="/{{ 'login' if mode == 'register' else 'register' }}">{{ 'Sign In' if mode == 'register' else 'Create Account' }}</a></p>
+    <p class="privacy-caption">{{ icon('lock', 13) }} Your account and photos are stored locally.</p>
   </form>
 </section>
 {% endblock %}

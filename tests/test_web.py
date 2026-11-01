@@ -1,6 +1,7 @@
 import re
 import os
 import tempfile
+import base64
 
 os.environ["GATHERLY_DATA_DIR"] = tempfile.mkdtemp(prefix="gatherly-tests-")
 
@@ -59,6 +60,27 @@ def test_account_event_and_invite_flow():
                 (event_id, owner_id, "existing-photo.jpg", str(photo_path), "image/jpeg", now_iso()),
             ).lastrowid
 
+        manage = owner.get(f"/events/{event_id}/manage")
+        cover_bytes = base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+        )
+        response = owner.post(
+            f"/events/{event_id}/appearance",
+            data={"csrf_token": csrf(manage), "theme": "ocean"},
+            files={"cover": ("cover.png", cover_bytes, "image/png")},
+            follow_redirects=True,
+        )
+        assert response.status_code == 200
+        assert response.url.path == f"/events/{event_id}/manage"
+        assert "Event appearance updated" in response.text
+        with db() as connection:
+            event = connection.execute(
+                "SELECT theme, cover_path FROM events WHERE id=?", (event_id,)
+            ).fetchone()
+        assert event["theme"] == "ocean"
+        assert event["cover_path"]
+        assert owner.get(f"/events/{event_id}/cover").status_code == 200
+
     with TestClient(app) as guest:
         page = guest.get("/register")
         response = guest.post(
@@ -78,7 +100,22 @@ def test_account_event_and_invite_flow():
         )
         assert response.status_code == 200
         assert "Test Celebration" in response.text
-        assert "Event Guest" in response.text
         assert "existing-photo.jpg" in response.text
+        assert f'action="/events/{event_id}/photos"' not in response.text
+        assert f'href="/events/{event_id}/manage"' in response.text
         assert guest.get(f"/media/{media_id}").status_code == 200
+        assert guest.get(f"/events/{event_id}/cover").status_code == 200
+
+        manage = guest.get(f"/events/{event_id}/manage")
+        assert manage.status_code == 200
+        assert "Event Guest" in manage.text
+        assert "Help Photos Find You" in manage.text
+        assert "Add Event Photos" in manage.text
+        assert "Event Appearance" not in manage.text
+        forbidden = guest.post(
+            f"/events/{event_id}/appearance",
+            data={"csrf_token": csrf(manage), "theme": "sunset"},
+            follow_redirects=False,
+        )
+        assert forbidden.status_code == 403
 

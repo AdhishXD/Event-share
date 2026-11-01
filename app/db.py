@@ -22,6 +22,8 @@ CREATE TABLE IF NOT EXISTS events (
     description TEXT NOT NULL DEFAULT '',
     event_date TEXT,
     invite_code TEXT NOT NULL UNIQUE,
+    cover_path TEXT,
+    theme TEXT NOT NULL DEFAULT 'system',
     owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     created_at TEXT NOT NULL
 );
@@ -96,6 +98,11 @@ def init_db() -> None:
     ensure_directories()
     with sqlite3.connect(DATABASE_PATH) as connection:
         connection.executescript(SCHEMA)
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(events)")}
+        if "cover_path" not in columns:
+            connection.execute("ALTER TABLE events ADD COLUMN cover_path TEXT")
+        if "theme" not in columns:
+            connection.execute("ALTER TABLE events ADD COLUMN theme TEXT NOT NULL DEFAULT 'system'")
 
 
 @contextmanager
