@@ -112,11 +112,19 @@ def test_account_event_and_invite_flow():
         assert "Help Photos Find You" in manage.text
         assert "Add Event Photos" in manage.text
         assert 'data-reference-camera' in manage.text
+        assert 'data-reference-library' in manage.text
+        assert 'data-reference-list' in manage.text
+        assert 'data-reference-feedback' in manage.text
+        assert 'name="references"' in manage.text
         assert 'capture="user"' in manage.text
         assert 'data-open-camera' in manage.text
         assert 'data-camera-dialog' in manage.text
         assert 'data-capture-photo' in manage.text
         assert 'name="photos"' in manage.text
+        assert 'data-event-photo-upload' in manage.text
+        assert 'data-event-photo-input' in manage.text
+        assert 'data-event-photo-list' in manage.text
+        assert 'data-event-photo-feedback' in manage.text
         assert 'name="photos" accept="image/jpeg,image/png,image/webp" multiple required capture' not in manage.text
         assert "Event Appearance" not in manage.text
         forbidden = guest.post(
@@ -125,4 +133,3 @@ def test_account_event_and_invite_flow():
             follow_redirects=False,
         )
         assert forbidden.status_code == 403
-
