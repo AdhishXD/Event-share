@@ -1,0 +1,5 @@
+<nav class="event-tabs" aria-label="Event navigation">
+  <a class="{{ 'active' if event_tab == 'photos' else '' }}" href="/events/{{ event.id }}">{{ icon('photos', 18) }} Photos</a>
+  <a class="{{ 'active' if event_tab == 'mine' else '' }}" href="/events/{{ event.id }}/my-photos">{{ icon('sparkle', 18) }} My Photos</a>
+  <a class="{{ 'active' if event_tab == 'manage' else '' }}" href="/events/{{ event.id }}/manage">{{ icon('settings', 18) }} Manage</a>
+</nav>

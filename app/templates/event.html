@@ -9,9 +9,9 @@
   </div>
   <div class="invite"><small>Invite code</small><strong>{{ event.invite_code }}</strong><button class="copy icon-button" type="button" data-copy="{{ event.invite_code }}" aria-label="Copy invite code">{{ icon('copy', 18) }}<span>Copy</span></button></div>
 </section>
-<nav class="event-tabs" aria-label="Event navigation"><a class="active" href="/events/{{ event.id }}">{{ icon('photos', 18) }} Photos</a><a href="/events/{{ event.id }}/manage">{{ icon('settings', 18) }} Manage</a></nav>
+{% set event_tab = 'photos' %}{% include '_event_tabs.html' %}
 <section class="photo-section event-photo-section">
-  <div class="section-title"><div><p class="overline">Event library</p><h2>All Photos</h2><p>{{ photos|length }} photos · Visible to every event member</p></div><a class="text-link" href="/gallery">View My Matches {{ icon('arrow', 15) }}</a></div>
+  <div class="section-title"><div><p class="overline">Event library</p><h2>All Photos</h2><p>{{ photos|length }} photos · Visible to every event member</p></div><a class="text-link" href="/events/{{ event.id }}/my-photos">View My Matches {{ icon('arrow', 15) }}</a></div>
   <div class="photo-grid">{% for photo in photos %}<article class="photo"><a href="/media/{{ photo.id }}" target="_blank"><img src="/media/{{ photo.id }}" alt="{{ photo.original_name }}" loading="lazy"></a><div><p>{{ photo.original_name }}</p><small>{{ photo.face_count }} faces · {{ photo.uploader_name }}</small>{% if photo.uploader_id == user.id or event.owner_id == user.id %}<form method="post" action="/media/{{ photo.id }}/delete" onsubmit="return confirm('Permanently delete this photo and all matches?')"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="text-danger">Delete</button></form>{% endif %}</div></article>{% else %}<div class="empty"><span class="empty-icon">{{ icon('photos', 28) }}</span><h3>No Photos Yet</h3><p>Open Manage to upload the first moments from this event.</p><a class="button" href="/events/{{ event.id }}/manage">Add Photos</a></div>{% endfor %}</div>
 </section>
 {% endblock %}

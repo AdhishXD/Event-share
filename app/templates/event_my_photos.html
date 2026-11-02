@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}My Photos · {{ event.name }} · Gatherly{% endblock %}
+{% block content %}
+<a class="back-link" href="/dashboard">‹ All Events</a>
+<section class="event-context event-theme-{{ event.theme or 'system' }} materialize">
+  <div class="event-context-cover">{% if event.cover_path %}<img src="/events/{{ event.id }}/cover" alt="{{ event.name }} cover">{% else %}<span>{{ event.name[0]|upper }}</span>{% endif %}</div>
+  <div><p class="overline">Your matches in this event</p><h1>{{ event.name }}</h1><p>{{ accepted|length }} confirmed · {{ pending|length }} waiting for review</p></div>
+</section>
+{% set event_tab = 'mine' %}{% include '_event_tabs.html' %}
+
+{% if pending %}<section class="review panel"><div class="section-title"><div><p class="overline">Private review</p><h2>Is This You?</h2><p>Confirm these possible matches from {{ event.name }}.</p></div><span class="status attention">{{ pending|length }} pending</span></div><div class="photo-grid review-grid">{% for photo in pending %}<article class="photo review-photo"><img src="/media/{{ photo.id }}" alt="Possible match from {{ event.name }}"><div><p>{{ photo.created_at[:10] }}</p><small>{{ (photo.confidence * 100)|round|int }}% similarity</small><form class="inline" method="post" action="/matches/{{ photo.match_id }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="gallery_scope" value="event"><button class="button small" name="decision" value="accepted">{{ icon('check', 15) }} That's Me</button><button class="danger small" name="decision" value="rejected">Not Me</button></form></div></article>{% endfor %}</div></section>{% endif %}
+
+<section class="photo-section event-photo-section"><div class="section-title"><div><p class="overline">Confirmed matches</p><h2>My Photos</h2><p>Only your confirmed matches from this event.</p></div><span class="status ready">{{ icon('check', 13) }} {{ accepted|length }} photos</span></div><div class="photo-grid gallery-grid">{% for photo in accepted %}<article class="photo gallery-photo"><a href="/media/{{ photo.id }}" target="_blank"><img src="/media/{{ photo.id }}" alt="Your matched photo from {{ event.name }}" loading="lazy"><span class="photo-badge">{{ icon('sparkle', 14) }} Match</span></a><div><p>{{ photo.original_name }}</p><small>{{ photo.created_at[:10] }} · {{ (photo.confidence * 100)|round|int }}% match</small></div></article>{% else %}<div class="empty"><span class="empty-icon">{{ icon('sparkle', 28) }}</span><h3>No Confirmed Matches Yet</h3><p>{% if profile %}New matches will appear here when event photos include you.{% else %}Create your private face profile so photos from this event can find you.{% endif %}</p><a class="button secondary" href="/events/{{ event.id }}/manage">{{ 'Open Personal Matching' if not profile else 'Manage Event' }}</a></div>{% endfor %}</div></section>
+{% endblock %}

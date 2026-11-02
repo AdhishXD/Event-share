@@ -148,6 +148,31 @@ def match_existing_photos(event_id: int, user_id: int, embedding) -> int:
     return matched
 
 
+def group_gallery_matches(rows) -> list[dict]:
+    """Group ordered match rows by event, then by the photo's calendar date."""
+    events: dict[int, dict] = {}
+    for row in rows:
+        photo = dict(row)
+        event_id = photo["event_id"]
+        event_group = events.setdefault(
+            event_id,
+            {
+                "id": event_id,
+                "name": photo["event_name"],
+                "event_date": photo["event_date"],
+                "count": 0,
+                "dates": {},
+            },
+        )
+        photo_date = (photo["created_at"] or "")[:10] or "Date unavailable"
+        event_group["dates"].setdefault(photo_date, []).append(photo)
+        event_group["count"] += 1
+    return [
+        {**event_group, "dates": [{"date": date, "photos": photos} for date, photos in event_group["dates"].items()]}
+        for event_group in events.values()
+    ]
+
+
 async def save_upload(upload: UploadFile, destination: Path) -> None:
     if upload.content_type not in ALLOWED_IMAGE_TYPES:
         raise ValueError("Only JPEG, PNG, and WebP images are supported.")
@@ -356,6 +381,39 @@ def manage_event_page(request: Request, event_id: int):
     )
 
 
+@app.get("/events/{event_id}/my-photos", response_class=HTMLResponse)
+def event_my_photos(request: Request, event_id: int):
+    user_id = require_user(request)
+    with db() as connection:
+        member = require_member(connection, event_id, user_id)
+        event = connection.execute("SELECT * FROM events WHERE id=?", (event_id,)).fetchone()
+        profile = connection.execute(
+            "SELECT * FROM face_profiles WHERE event_id=? AND user_id=?", (event_id, user_id)
+        ).fetchone()
+        matches = connection.execute(
+            """SELECT media.*, events.id AS event_id, events.name AS event_name,
+                      events.event_date, matches.confidence, matches.id AS match_id,
+                      matches.status AS match_status
+               FROM matches
+               JOIN media ON media.id=matches.media_id
+               JOIN events ON events.id=media.event_id
+               WHERE matches.user_id=? AND media.event_id=? AND matches.status IN ('accepted','pending')
+               ORDER BY media.created_at DESC""",
+            (user_id, event_id),
+        ).fetchall()
+    accepted = [dict(match) for match in matches if match["match_status"] == "accepted"]
+    pending = [dict(match) for match in matches if match["match_status"] == "pending"]
+    return template(
+        request,
+        "event_my_photos.html",
+        event=event,
+        member=member,
+        profile=profile,
+        accepted=accepted,
+        pending=pending,
+    )
+
+
 @app.post("/events/{event_id}/appearance")
 async def update_event_appearance(
     request: Request,
@@ -554,18 +612,31 @@ def gallery(request: Request):
     user_id = require_user(request)
     with db() as connection:
         accepted = connection.execute(
-            """SELECT media.*, events.name AS event_name, matches.confidence, matches.id AS match_id
+            """SELECT media.*, events.id AS event_id, events.name AS event_name,
+                      events.event_date, matches.confidence, matches.id AS match_id
                FROM matches JOIN media ON media.id=matches.media_id JOIN events ON events.id=media.event_id
-               WHERE matches.user_id=? AND matches.status='accepted' ORDER BY media.created_at DESC""",
+               WHERE matches.user_id=? AND matches.status='accepted'
+               ORDER BY COALESCE(events.event_date, substr(media.created_at,1,10)) DESC,
+                        events.name COLLATE NOCASE, media.created_at DESC""",
             (user_id,),
         ).fetchall()
         pending = connection.execute(
-            """SELECT media.*, events.name AS event_name, matches.confidence, matches.id AS match_id
+            """SELECT media.*, events.id AS event_id, events.name AS event_name,
+                      events.event_date, matches.confidence, matches.id AS match_id
                FROM matches JOIN media ON media.id=matches.media_id JOIN events ON events.id=media.event_id
-               WHERE matches.user_id=? AND matches.status='pending' ORDER BY media.created_at DESC""",
+               WHERE matches.user_id=? AND matches.status='pending'
+               ORDER BY COALESCE(events.event_date, substr(media.created_at,1,10)) DESC,
+                        events.name COLLATE NOCASE, media.created_at DESC""",
             (user_id,),
         ).fetchall()
-    return template(request, "gallery.html", accepted=accepted, pending=pending)
+    return template(
+        request,
+        "gallery.html",
+        accepted=accepted,
+        pending=pending,
+        accepted_groups=group_gallery_matches(accepted),
+        pending_groups=group_gallery_matches(pending),
+    )
 
 
 @app.post("/matches/{match_id}")
@@ -573,6 +644,7 @@ def review_match(
     request: Request,
     match_id: int,
     decision: str = Form(...),
+    gallery_scope: str = Form("global"),
     csrf_token: str = Form(...),
 ):
     verify_csrf(request, csrf_token)
@@ -580,11 +652,21 @@ def review_match(
     if decision not in {"accepted", "rejected"}:
         raise HTTPException(400, "Invalid decision.")
     with db() as connection:
+        match = connection.execute(
+            """SELECT media.event_id FROM matches
+               JOIN media ON media.id=matches.media_id
+               WHERE matches.id=? AND matches.user_id=?""",
+            (match_id, user_id),
+        ).fetchone()
+        if not match:
+            raise HTTPException(404, "Match not found.")
         result = connection.execute(
             "UPDATE matches SET status=? WHERE id=? AND user_id=?", (decision, match_id, user_id)
         )
         if not result.rowcount:
             raise HTTPException(404, "Match not found.")
+    if gallery_scope == "event":
+        return RedirectResponse(f"/events/{match['event_id']}/my-photos", status_code=303)
     return RedirectResponse("/gallery", status_code=303)
 
 

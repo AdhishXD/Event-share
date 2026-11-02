@@ -104,6 +104,7 @@ def test_account_event_and_invite_flow(monkeypatch):
         assert "existing-photo.jpg" in response.text
         assert f'action="/events/{event_id}/photos"' not in response.text
         assert f'href="/events/{event_id}/manage"' in response.text
+        assert f'href="/events/{event_id}/my-photos"' in response.text
         assert guest.get(f"/media/{media_id}").status_code == 200
         assert guest.get(f"/events/{event_id}/cover").status_code == 200
 
@@ -152,6 +153,18 @@ def test_account_event_and_invite_flow(monkeypatch):
         assert enrolled.status_code == 200
         assert "Enrolled" in enrolled.text
         assert "Delete Face Profile" in enrolled.text
+
+        event_gallery = guest.get(f"/events/{event_id}/my-photos")
+        assert event_gallery.status_code == 200
+        assert "Your matches in this event" in event_gallery.text
+        assert "existing-photo.jpg" in event_gallery.text
+
+        global_gallery = guest.get("/gallery")
+        assert global_gallery.status_code == 200
+        assert "Across all events" in global_gallery.text
+        assert "Test Celebration" in global_gallery.text
+        assert "2026-12-12" in global_gallery.text
+        assert f'href="/events/{event_id}/my-photos"' in global_gallery.text
 
         deleted = guest.post(
             f"/events/{event_id}/enrollment/delete",
