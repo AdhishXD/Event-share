@@ -13,7 +13,117 @@ document.querySelectorAll("[data-copy]").forEach((button) => {
   });
 });
 
-document.querySelectorAll('input[type="file"]:not([data-reference-library]):not([data-reference-camera])').forEach((input) => {
+document.querySelectorAll("[data-event-photo-upload]").forEach((form) => {
+  const input = form.querySelector("[data-event-photo-input]");
+  const summary = form.querySelector("[data-event-photo-summary]");
+  const list = form.querySelector("[data-event-photo-list]");
+  const feedback = form.querySelector("[data-event-photo-feedback]");
+  const submit = form.querySelector('button[type="submit"]');
+  let selected = [];
+  let uploading = false;
+  input.required = false;
+
+  const fileKey = (file) => [file.name, file.size, file.lastModified, file.type].join("\u0000");
+
+  const render = () => {
+    summary.textContent = `${selected.length} photo${selected.length === 1 ? "" : "s"} selected`;
+    list.replaceChildren();
+
+    selected.forEach((file) => {
+      const item = document.createElement("li");
+      const filename = document.createElement("span");
+      const remove = document.createElement("button");
+      filename.textContent = file.name;
+      remove.type = "button";
+      remove.className = "text-danger";
+      remove.disabled = uploading;
+      remove.textContent = "Remove";
+      remove.setAttribute("aria-label", `Remove ${file.name}`);
+      remove.addEventListener("click", () => {
+        selected = selected.filter((selectedFile) => selectedFile !== file);
+        render();
+      });
+      item.append(filename, remove);
+      list.append(item);
+    });
+  };
+
+  input.addEventListener("change", () => {
+    const existing = new Set(selected.map(fileKey));
+    let duplicates = 0;
+    Array.from(input.files || []).forEach((file) => {
+      const key = fileKey(file);
+      if (existing.has(key)) {
+        duplicates += 1;
+      } else {
+        existing.add(key);
+        selected.push(file);
+      }
+    });
+    input.value = "";
+    render();
+    feedback.textContent = duplicates
+      ? `${duplicates} already selected photo${duplicates === 1 ? " was" : "s were"} skipped.`
+      : "";
+  });
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (uploading) return;
+    if (!selected.length) {
+      feedback.textContent = "Choose at least one photo before uploading.";
+      feedback.classList.add("error");
+      input.focus();
+      return;
+    }
+    const formData = new FormData(form);
+    formData.delete(input.name);
+    selected.forEach((file) => formData.append(input.name, file, file.name));
+    uploading = true;
+    input.disabled = true;
+    submit.disabled = true;
+    form.setAttribute("aria-busy", "true");
+    feedback.textContent = "";
+    feedback.classList.remove("error", "success");
+
+    try {
+      const response = await fetch(form.action, {
+        method: form.method,
+        body: formData,
+        credentials: "same-origin",
+      });
+      const responseHtml = await response.text();
+      const result = new DOMParser().parseFromString(responseHtml, "text/html");
+      const message = result.querySelector(".flash");
+      if (!response.ok || !message) {
+        feedback.textContent = message?.textContent.trim() || "Upload failed. Your selected photos are still available; try again.";
+        feedback.classList.add("error");
+        return;
+      }
+      if (!message.classList.contains("success")) {
+        feedback.textContent = message.textContent.trim();
+        feedback.classList.add("error");
+        return;
+      }
+
+      selected = [];
+      render();
+      feedback.textContent = message.textContent.trim();
+      feedback.classList.add("success");
+    } catch {
+      feedback.textContent = "Upload failed. Your selected photos are still available; try again.";
+      feedback.classList.add("error");
+    } finally {
+      uploading = false;
+      input.disabled = false;
+      submit.disabled = false;
+      list.querySelectorAll("button").forEach((button) => { button.disabled = false; });
+      form.removeAttribute("aria-busy");
+    }
+  });
+});
+
+document.querySelectorAll('input[type="file"]:not([data-reference-library]):not([data-reference-camera]):not([data-event-photo-input])').forEach((input) => {
   input.addEventListener("change", () => {
     const label = input.closest("label");
     const caption = label?.querySelector("span");
@@ -27,31 +137,136 @@ document.querySelectorAll("[data-reference-picker]").forEach((picker) => {
   const library = picker.querySelector("[data-reference-library]");
   const camera = picker.querySelector("[data-reference-camera]");
   const summary = picker.querySelector("[data-reference-summary]");
+  const list = picker.querySelector("[data-reference-list]");
+  const feedback = picker.querySelector("[data-reference-feedback]");
   const openCamera = picker.querySelector("[data-open-camera]");
   const dialog = picker.querySelector("[data-camera-dialog]");
   const video = picker.querySelector("[data-camera-video]");
   const canvas = picker.querySelector("[data-camera-canvas]");
   const capture = picker.querySelector("[data-capture-photo]");
   const cameraStatus = picker.querySelector("[data-camera-status]");
+  const form = picker.closest("form");
+  const submit = form.querySelector('button[type="submit"]');
   let selected = [];
   let stream = null;
+  let uploading = false;
+  library.required = false;
 
   const update = (files) => {
-    selected = Array.from(files).slice(0, 5);
-    const transfer = new DataTransfer();
-    selected.forEach((file) => transfer.items.add(file));
-    library.files = transfer.files;
+    const existing = new Set(selected.map((file) => [file.name, file.size, file.lastModified, file.type].join("\u0000")));
+    let duplicates = 0;
+    let excess = 0;
+    Array.from(files).forEach((file) => {
+      const key = [file.name, file.size, file.lastModified, file.type].join("\u0000");
+      if (existing.has(key)) {
+        duplicates += 1;
+      } else if (selected.length >= 5) {
+        excess += 1;
+      } else {
+        existing.add(key);
+        selected.push(file);
+      }
+    });
+    library.value = "";
     const count = selected.length;
     summary.textContent = count
       ? `${count} of 5 reference photo${count === 1 ? "" : "s"} selected${count < 2 ? " · add at least one more" : ""}`
       : "No photos selected · 2–5 required";
     picker.classList.toggle("has-files", count > 0);
+    list.replaceChildren();
+    selected.forEach((file) => {
+      const item = document.createElement("li");
+      const filename = document.createElement("span");
+      const remove = document.createElement("button");
+      filename.textContent = file.name;
+      remove.type = "button";
+      remove.className = "text-danger";
+      remove.disabled = uploading;
+      remove.textContent = "Remove";
+      remove.setAttribute("aria-label", `Remove ${file.name}`);
+      remove.addEventListener("click", () => {
+        selected = selected.filter((selectedFile) => selectedFile !== file);
+        update([]);
+      });
+      item.append(filename, remove);
+      list.append(item);
+    });
+    feedback.textContent = excess
+      ? "You can select up to 5 reference photos. Additional photos were not added."
+      : duplicates
+        ? `${duplicates} already selected photo${duplicates === 1 ? " was" : "s were"} skipped.`
+        : "";
+    feedback.classList.remove("success");
+    feedback.classList.toggle("error", excess > 0);
   };
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (uploading) return;
+    if (selected.length < 2 || selected.length > 5) {
+      feedback.textContent = "Choose between 2 and 5 reference photos before creating your profile.";
+      feedback.classList.add("error");
+      library.focus();
+      return;
+    }
+
+    const formData = new FormData(form);
+    formData.delete(library.name);
+    selected.forEach((file) => formData.append(library.name, file, file.name));
+    uploading = true;
+    library.disabled = true;
+    camera.disabled = true;
+    openCamera.disabled = true;
+    capture.disabled = true;
+    submit.disabled = true;
+    picker.setAttribute("aria-busy", "true");
+    list.querySelectorAll("button").forEach((button) => { button.disabled = true; });
+    feedback.textContent = "";
+    feedback.classList.remove("error", "success");
+    closeCamera();
+
+    try {
+      const response = await fetch(form.action, {
+        method: form.method,
+        body: formData,
+        credentials: "same-origin",
+      });
+      const responseHtml = await response.text();
+      const result = new DOMParser().parseFromString(responseHtml, "text/html");
+      const message = result.querySelector(".flash");
+      if (!response.ok || !message) {
+        feedback.textContent = message?.textContent.trim() || "Enrollment failed. Your selected photos are still available; try again.";
+        feedback.classList.add("error");
+        return;
+      }
+      if (!message.classList.contains("success")) {
+        feedback.textContent = message.textContent.trim();
+        feedback.classList.add("error");
+        return;
+      }
+
+      selected = [];
+      update([]);
+      feedback.textContent = message.textContent.trim();
+      feedback.classList.add("success");
+    } catch {
+      feedback.textContent = "Enrollment failed. Your selected photos are still available; try again.";
+      feedback.classList.add("error");
+    } finally {
+      uploading = false;
+      library.disabled = false;
+      camera.disabled = false;
+      openCamera.disabled = false;
+      submit.disabled = false;
+      list.querySelectorAll("button").forEach((button) => { button.disabled = false; });
+      picker.removeAttribute("aria-busy");
+    }
+  });
 
   library.addEventListener("change", () => update(library.files));
   camera.addEventListener("change", () => {
     if (!camera.files?.length) return;
-    update([...selected, ...camera.files]);
+    update(camera.files);
     camera.value = "";
   });
 
@@ -81,8 +296,8 @@ document.querySelectorAll("[data-reference-picker]").forEach((picker) => {
       cameraStatus.textContent = "Look directly at the camera, then vary your angle slightly for each photo.";
       dialog.showModal();
     } catch {
-      summary.textContent = "Camera access was unavailable. Allow camera permission or choose photos instead.";
-      picker.classList.remove("has-files");
+      feedback.textContent = "Camera access was unavailable. Allow camera permission or choose photos instead.";
+      feedback.classList.add("error");
     }
   });
 
