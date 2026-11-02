@@ -1,5 +1,17 @@
 document.documentElement.classList.add("js");
 
+document.querySelectorAll("[data-flash]").forEach((flash) => {
+  let removalTimer;
+  const dismiss = () => {
+    clearTimeout(removalTimer);
+    flash.classList.add("is-dismissing");
+    flash.addEventListener("transitionend", () => flash.remove(), { once: true });
+    setTimeout(() => flash.remove(), 350);
+  };
+  flash.querySelector("[data-dismiss-flash]")?.addEventListener("click", dismiss);
+  removalTimer = setTimeout(dismiss, 6000);
+});
+
 document.querySelectorAll("[data-copy]").forEach((button) => {
   button.addEventListener("click", async () => {
     const label = button.querySelector("span");
@@ -95,20 +107,21 @@ document.querySelectorAll("[data-event-photo-upload]").forEach((form) => {
       const responseHtml = await response.text();
       const result = new DOMParser().parseFromString(responseHtml, "text/html");
       const message = result.querySelector(".flash");
+      const messageText = message?.querySelector(".flash-message")?.textContent.trim();
       if (!response.ok || !message) {
-        feedback.textContent = message?.textContent.trim() || "Upload failed. Your selected photos are still available; try again.";
+        feedback.textContent = messageText || "Upload failed. Your selected photos are still available; try again.";
         feedback.classList.add("error");
         return;
       }
       if (!message.classList.contains("success")) {
-        feedback.textContent = message.textContent.trim();
+        feedback.textContent = messageText || "Upload failed. Your selected photos are still available; try again.";
         feedback.classList.add("error");
         return;
       }
 
       selected = [];
       render();
-      feedback.textContent = message.textContent.trim();
+      feedback.textContent = messageText || "Photos uploaded successfully.";
       feedback.classList.add("success");
     } catch {
       feedback.textContent = "Upload failed. Your selected photos are still available; try again.";
@@ -150,7 +163,19 @@ document.querySelectorAll("[data-reference-picker]").forEach((picker) => {
   let selected = [];
   let stream = null;
   let uploading = false;
+  const previewUrls = new Map();
   library.required = false;
+
+  const previewUrlFor = (file) => {
+    if (!previewUrls.has(file)) previewUrls.set(file, URL.createObjectURL(file));
+    return previewUrls.get(file);
+  };
+
+  const releasePreview = (file) => {
+    const url = previewUrls.get(file);
+    if (url) URL.revokeObjectURL(url);
+    previewUrls.delete(file);
+  };
 
   const update = (files) => {
     const existing = new Set(selected.map((file) => [file.name, file.size, file.lastModified, file.type].join("\u0000")));
@@ -176,19 +201,27 @@ document.querySelectorAll("[data-reference-picker]").forEach((picker) => {
     list.replaceChildren();
     selected.forEach((file) => {
       const item = document.createElement("li");
+      const preview = document.createElement("img");
+      const details = document.createElement("div");
       const filename = document.createElement("span");
       const remove = document.createElement("button");
+      preview.className = "reference-photo-preview";
+      preview.src = previewUrlFor(file);
+      preview.alt = "";
       filename.textContent = file.name;
+      details.className = "reference-photo-details";
       remove.type = "button";
       remove.className = "text-danger";
       remove.disabled = uploading;
       remove.textContent = "Remove";
       remove.setAttribute("aria-label", `Remove ${file.name}`);
       remove.addEventListener("click", () => {
+        releasePreview(file);
         selected = selected.filter((selectedFile) => selectedFile !== file);
         update([]);
       });
-      item.append(filename, remove);
+      details.append(filename, remove);
+      item.append(preview, details);
       list.append(item);
     });
     feedback.textContent = excess
@@ -234,21 +267,20 @@ document.querySelectorAll("[data-reference-picker]").forEach((picker) => {
       const responseHtml = await response.text();
       const result = new DOMParser().parseFromString(responseHtml, "text/html");
       const message = result.querySelector(".flash");
+      const messageText = message?.querySelector(".flash-message")?.textContent.trim();
       if (!response.ok || !message) {
-        feedback.textContent = message?.textContent.trim() || "Enrollment failed. Your selected photos are still available; try again.";
+        feedback.textContent = messageText || "Enrollment failed. Your selected photos are still available; try again.";
         feedback.classList.add("error");
         return;
       }
       if (!message.classList.contains("success")) {
-        feedback.textContent = message.textContent.trim();
+        feedback.textContent = messageText || "Enrollment failed. Your selected photos are still available; try again.";
         feedback.classList.add("error");
         return;
       }
 
-      selected = [];
-      update([]);
-      feedback.textContent = message.textContent.trim();
-      feedback.classList.add("success");
+      window.location.replace(response.url);
+      return;
     } catch {
       feedback.textContent = "Enrollment failed. Your selected photos are still available; try again.";
       feedback.classList.add("error");
@@ -328,4 +360,5 @@ document.querySelectorAll("[data-reference-picker]").forEach((picker) => {
   picker.querySelector("[data-done-camera]").addEventListener("click", closeCamera);
   dialog.addEventListener("close", stopCamera);
   dialog.addEventListener("cancel", stopCamera);
+  window.addEventListener("pagehide", () => previewUrls.forEach((url) => URL.revokeObjectURL(url)), { once: true });
 });

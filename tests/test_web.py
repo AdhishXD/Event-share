@@ -2,6 +2,7 @@ import re
 import os
 import tempfile
 import base64
+import numpy as np
 
 os.environ["GATHERLY_DATA_DIR"] = tempfile.mkdtemp(prefix="gatherly-tests-")
 
@@ -18,7 +19,7 @@ def csrf(response) -> str:
     return match.group(1)
 
 
-def test_account_event_and_invite_flow():
+def test_account_event_and_invite_flow(monkeypatch):
     with TestClient(app) as owner:
         page = owner.get("/register")
         response = owner.post(
@@ -111,6 +112,7 @@ def test_account_event_and_invite_flow():
         assert "Event Guest" in manage.text
         assert "Help Photos Find You" in manage.text
         assert "Add Event Photos" in manage.text
+        assert "No batch limit" in manage.text
         assert 'data-reference-camera' in manage.text
         assert 'data-reference-library' in manage.text
         assert 'data-reference-list' in manage.text
@@ -133,3 +135,48 @@ def test_account_event_and_invite_flow():
             follow_redirects=False,
         )
         assert forbidden.status_code == 403
+
+        monkeypatch.setattr(
+            "app.main.recognition.embeddings",
+            lambda _: [np.asarray([1.0, 0.0], dtype=np.float32)],
+        )
+        enrolled = guest.post(
+            f"/events/{event_id}/enroll",
+            data={"csrf_token": csrf(manage), "consent": "yes"},
+            files=[
+                ("references", ("reference-one.jpg", b"reference-one", "image/jpeg")),
+                ("references", ("reference-two.jpg", b"reference-two", "image/jpeg")),
+            ],
+            follow_redirects=True,
+        )
+        assert enrolled.status_code == 200
+        assert "Enrolled" in enrolled.text
+        assert "Delete Face Profile" in enrolled.text
+
+        deleted = guest.post(
+            f"/events/{event_id}/enrollment/delete",
+            data={"csrf_token": csrf(enrolled)},
+            follow_redirects=True,
+        )
+        assert "Your face profile and matches for this event were deleted." in deleted.text
+        assert "data-dismiss-flash" in deleted.text
+        assert "Your face profile and matches for this event were deleted." not in guest.get(
+            f"/events/{event_id}/manage"
+        ).text
+
+        bulk = guest.post(
+            f"/events/{event_id}/photos",
+            data={"csrf_token": csrf(deleted)},
+            files=[
+                ("photos", (f"event-photo-{index}.jpg", f"photo-{index}".encode(), "image/jpeg"))
+                for index in range(21)
+            ],
+            follow_redirects=True,
+        )
+        assert bulk.status_code == 200
+        assert "Processed 21 photo(s)" in bulk.text
+        with db() as connection:
+            photo_count = connection.execute(
+                "SELECT COUNT(*) FROM media WHERE event_id=?", (event_id,)
+            ).fetchone()[0]
+        assert photo_count == 22

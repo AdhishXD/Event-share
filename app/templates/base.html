@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <title>{% block title %}Gatherly{% endblock %}</title>
-  <link rel="stylesheet" href="/static/style.css?v=apple-redesign-6">
+  <link rel="stylesheet" href="/static/style.css?v=apple-redesign-8">
 </head>
 <body class="{% block body_class %}{% endblock %}">
   {% from "_icons.html" import icon %}
@@ -21,10 +21,10 @@
       {% endif %}
     </nav>
   </header>
-  {% if flash %}<div class="flash {{ flash.kind }}" role="status"><span>{{ icon('check', 18) }}</span>{{ flash.message }}</div>{% endif %}
+  {% if flash %}<div class="flash {{ flash.kind }}" role="status" data-flash><span>{{ icon('check', 18) }}</span><span class="flash-message">{{ flash.message }}</span><button class="flash-close" type="button" data-dismiss-flash aria-label="Dismiss notification">×</button></div>{% endif %}
   <main>{% block content %}{% endblock %}</main>
   {% if user %}<nav class="mobile-tabbar glass-bar" aria-label="Mobile navigation"><a class="{{ 'active' if request.url.path == '/dashboard' else '' }}" href="/dashboard">{{ icon('events', 23) }}<span>Events</span></a><a class="{{ 'active' if request.url.path == '/gallery' else '' }}" href="/gallery">{{ icon('photos', 23) }}<span>Photos</span></a><a href="/dashboard">{{ icon('person', 23) }}<span>Account</span></a></nav>{% endif %}
   <footer><span>{{ icon('lock', 14) }}</span> Face matching stays on this computer</footer>
-  <script src="/static/app.js?v=apple-redesign-7" defer></script>
+  <script src="/static/app.js?v=apple-redesign-8" defer></script>
 </body>
 </html>

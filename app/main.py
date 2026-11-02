@@ -508,8 +508,8 @@ async def upload_photos(
         profiles = connection.execute(
             "SELECT user_id, embedding FROM face_profiles WHERE event_id=?", (event_id,)
         ).fetchall()
-    if not 1 <= len(photos) <= 20:
-        flash(request, "Upload between 1 and 20 photos at a time.", "error")
+    if not photos:
+        flash(request, "Choose at least one event photo.", "error")
         return RedirectResponse(f"/events/{event_id}/manage", status_code=303)
     completed = 0
     try:
